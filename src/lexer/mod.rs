@@ -1,11 +1,12 @@
 pub mod tokenizer;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum TokenType {
     Integer,
     Float,
     String,
 
+    // Special tokens
     Skipped,
 }
 

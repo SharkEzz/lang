@@ -1,7 +1,7 @@
 use super::{Token, TokenType};
 use regex::Regex;
 
-const SPECS: [(super::TokenType, &str); 5] = [
+const SPECS: [(TokenType, &str); 5] = [
     (TokenType::Float, r"^\d+\.(\d+)?"),
     (TokenType::Integer, r"^\d+"),
     (TokenType::String, r"^'(?P<raw>[^']*)'"),
@@ -12,6 +12,7 @@ const SPECS: [(super::TokenType, &str); 5] = [
 pub struct Tokenizer {
     position: usize,
     source: String,
+    compiled_specs: Vec<(TokenType, Regex)>,
 }
 
 impl Tokenizer {
@@ -19,11 +20,19 @@ impl Tokenizer {
         Tokenizer {
             position: 0,
             source: String::from(source.trim()),
+            compiled_specs: SPECS
+                .iter()
+                .map(|(token_type, regexp)| {
+                    (
+                        *token_type,
+                        Regex::new(regexp).expect("Invalid regular expression"),
+                    )
+                })
+                .collect(),
         }
     }
 
-    fn match_string(&self, regexp: &str, input: &str) -> Option<(usize, String)> {
-        let re = Regex::new(regexp).expect("Invalid regular expression");
+    fn match_string(&self, re: &Regex, input: &str) -> Option<(usize, String)> {
         let captures = re.captures_iter(input);
 
         let length: usize;
@@ -53,8 +62,8 @@ impl Iterator for Tokenizer {
     fn next(&mut self) -> Option<Self::Item> {
         let current_str = &self.source[self.position..];
 
-        for (token_type, regexp) in SPECS {
-            let token_value = self.match_string(regexp, current_str);
+        for (token_type, regexp) in self.compiled_specs.iter() {
+            let token_value = self.match_string(&regexp, current_str);
             if token_value.is_none() {
                 continue;
             }
@@ -68,7 +77,7 @@ impl Iterator for Tokenizer {
                 }
                 _ => {
                     return Some(Token {
-                        kind: token_type,
+                        kind: *token_type,
                         value,
                     });
                 }
