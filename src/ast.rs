@@ -9,7 +9,6 @@ pub enum Types {
 pub trait Stmt {
     fn get_type(&self) -> Types;
 }
-
 pub trait Expr: Stmt {}
 
 pub struct Program {
@@ -23,7 +22,7 @@ impl Stmt for Program {
 }
 
 pub struct IntegerLiteral {
-    pub value: i32,
+    pub value: i64,
 }
 
 impl Stmt for IntegerLiteral {
@@ -35,7 +34,7 @@ impl Stmt for IntegerLiteral {
 impl Expr for IntegerLiteral {}
 
 pub struct FloatLiteral {
-    pub value: f32,
+    pub value: f64,
 }
 
 impl Stmt for FloatLiteral {

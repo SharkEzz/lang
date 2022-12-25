@@ -16,7 +16,7 @@ pub struct Tokenizer {
 }
 
 impl Tokenizer {
-    pub fn new(source: &str) -> Tokenizer {
+    pub fn new(source: &str) -> Self {
         Tokenizer {
             position: 0,
             source: String::from(source.trim()),
