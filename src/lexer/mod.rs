@@ -1,17 +1,29 @@
 pub mod tokenizer;
 
-#[derive(Debug, Clone, Copy)]
-enum TokenType {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TokenType {
     Integer,
     Float,
     String,
+
+    Equal,
+    Plus,
+    Minus,
+    Star,
+    Slash,
+
+    OpenParen,
+    CloseParen,
+
+    // Identifiers
+    Let,
 
     // Special tokens
     Skipped,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
-    kind: TokenType,
-    value: String,
+    pub kind: TokenType,
+    pub value: String,
 }
