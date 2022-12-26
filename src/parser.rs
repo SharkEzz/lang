@@ -96,9 +96,14 @@ impl Parser {
         self.eat(TokenType::Func);
         let identifier = self.eat(TokenType::Identifier).value;
 
-        // TODO: Parse parameters
-        let parameters: Vec<String> = vec![];
+        let mut parameters: Vec<String> = vec![];
         self.eat(TokenType::OpenParen);
+        while self.peek().kind != TokenType::CloseParen {
+            parameters.push(self.eat(TokenType::Identifier).value);
+            if self.peek().kind == TokenType::Comma {
+                self.eat(TokenType::Comma);
+            }
+        }
         self.eat(TokenType::CloseParen);
 
         let block = self.parse_block_stmt();
@@ -138,16 +143,40 @@ impl Parser {
     }
 
     fn parse_multiplicative_expr(&mut self) -> Expr {
-        let mut expr = self.parse_primary_expr();
+        let mut expr = self.parse_func_call_expr();
 
         while self.peek().kind == TokenType::Star || self.peek().kind == TokenType::Slash {
             let op = self.advance();
-            let right = self.parse_primary_expr();
+            let right = self.parse_func_call_expr();
 
             expr = Expr::Binary(Box::new(expr), op, Box::new(right));
         }
 
         expr
+    }
+
+    fn parse_func_call_expr(&mut self) -> Expr {
+        let primary = self.parse_primary_expr();
+        match &primary {
+            Expr::Identifier(name) => {
+                if self.peek().kind != TokenType::OpenParen {
+                    return primary;
+                }
+
+                self.eat(TokenType::OpenParen);
+                let mut args: Vec<Expr> = vec![];
+                while self.peek().kind != TokenType::CloseParen {
+                    args.push(self.parse_expression());
+                    if self.peek().kind == TokenType::Comma {
+                        self.eat(TokenType::Comma);
+                    }
+                }
+                self.eat(TokenType::CloseParen);
+
+                Expr::CallExpr(name.clone(), args)
+            }
+            _ => primary,
+        }
     }
 
     fn parse_primary_expr(&mut self) -> Expr {

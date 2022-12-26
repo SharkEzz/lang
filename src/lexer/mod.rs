@@ -2,6 +2,7 @@ pub mod tokenizer;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
+    // Literals
     Integer,
     Float,
     String,
@@ -17,6 +18,7 @@ pub enum TokenType {
     SemiColon,
     OpenBrace,
     CloseBrace,
+    Comma,
 
     // Keywords
     Let,

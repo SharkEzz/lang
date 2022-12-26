@@ -1,7 +1,7 @@
 use super::{Token, TokenType};
 use regex::Regex;
 
-const SPECS: &'static [(TokenType, &str)] = &[
+const SPECS: &[(TokenType, &str)] = &[
     (TokenType::Float, r"^\d+\.(\d+)?"),
     (TokenType::Integer, r"^\d+"),
     (TokenType::String, r"^'(?P<raw>[^']*)'"),
@@ -17,6 +17,7 @@ const SPECS: &'static [(TokenType, &str)] = &[
     (TokenType::SemiColon, r"^;"),
     (TokenType::OpenBrace, r"^\{"),
     (TokenType::CloseBrace, r"^}"),
+    (TokenType::Comma, r"^,"),
     // Keywords
     (TokenType::Let, r"^let"),
     (TokenType::Const, r"^const"),
