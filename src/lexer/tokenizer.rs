@@ -15,9 +15,13 @@ const SPECS: &'static [(TokenType, &str)] = &[
     (TokenType::OpenParen, r"^\("),
     (TokenType::CloseParen, r"^\)"),
     (TokenType::SemiColon, r"^;"),
+    (TokenType::OpenBrace, r"^\{"),
+    (TokenType::CloseBrace, r"^}"),
     // Keywords
     (TokenType::Let, r"^let"),
     (TokenType::Const, r"^const"),
+    (TokenType::Func, r"^func"),
+    (TokenType::Return, r"^return"),
     // Special tokens
     (TokenType::Identifier, r"^[a-zA-Z_][a-zA-Z0-9_]*"),
     (TokenType::Skipped, r"^\s+"),

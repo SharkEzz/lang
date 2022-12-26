@@ -24,7 +24,6 @@ impl Parser {
 
         while self.peek().kind != TokenType::EOF {
             statements.push(self.parse_statement());
-            self.eat(TokenType::SemiColon);
         }
 
         Program { statements }
@@ -61,8 +60,50 @@ impl Parser {
         match self.peek().kind {
             TokenType::Let => self.parse_var_declaration(),
             TokenType::Const => self.parse_var_declaration(),
+            TokenType::Func => self.parse_func_declaration(),
+            TokenType::Return => self.parse_return_stmt(),
+            TokenType::OpenBrace => self.parse_block_stmt(),
             _ => Stmt::Expression(self.parse_expression()),
         }
+    }
+
+    fn parse_expression(&mut self) -> Expr {
+        match self.peek().kind {
+            _ => self.parse_additive_expr(),
+        }
+    }
+
+    fn parse_block_stmt(&mut self) -> Stmt {
+        self.eat(TokenType::OpenBrace);
+        let mut statements: Vec<Stmt> = vec![];
+        while self.peek().kind != TokenType::CloseBrace {
+            statements.push(self.parse_statement());
+        }
+        self.eat(TokenType::CloseBrace);
+
+        Stmt::Block(statements)
+    }
+
+    fn parse_return_stmt(&mut self) -> Stmt {
+        self.eat(TokenType::Return);
+        let expr = self.parse_expression();
+        self.eat(TokenType::SemiColon);
+
+        Stmt::Return(expr)
+    }
+
+    fn parse_func_declaration(&mut self) -> Stmt {
+        self.eat(TokenType::Func);
+        let identifier = self.eat(TokenType::Identifier).value;
+
+        // TODO: Parse parameters
+        let parameters: Vec<String> = vec![];
+        self.eat(TokenType::OpenParen);
+        self.eat(TokenType::CloseParen);
+
+        let block = self.parse_block_stmt();
+
+        Stmt::FuncDeclaration(identifier, parameters, Box::new(block))
     }
 
     fn parse_var_declaration(&mut self) -> Stmt {
@@ -78,13 +119,9 @@ impl Parser {
         self.eat(TokenType::Equal);
         let expr = self.parse_expression();
 
-        Stmt::VarDeclaration(identifier.value, is_const, expr)
-    }
+        self.eat(TokenType::SemiColon);
 
-    fn parse_expression(&mut self) -> Expr {
-        match self.peek().kind {
-            _ => self.parse_additive_expr(),
-        }
+        Stmt::VarDeclaration(identifier.value, is_const, expr)
     }
 
     fn parse_additive_expr(&mut self) -> Expr {

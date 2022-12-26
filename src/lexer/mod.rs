@@ -15,10 +15,14 @@ pub enum TokenType {
     OpenParen,
     CloseParen,
     SemiColon,
+    OpenBrace,
+    CloseBrace,
 
     // Keywords
     Let,
     Const,
+    Func,
+    Return,
 
     // Special tokens
     Identifier,
