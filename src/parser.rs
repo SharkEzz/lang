@@ -1,9 +1,12 @@
+use std::vec;
+
 use crate::{
     ast::{
         atom::Atom,
         expr::Expr,
         program::{Program, Stmt},
     },
+    eof_token,
     lexer::{tokenizer::Tokenizer, Token, TokenType},
 };
 
@@ -14,116 +17,152 @@ pub struct Parser {
 impl Parser {
     pub fn new(source: &str) -> Self {
         let tokenizer = Tokenizer::new(source);
+        let mut tokens: Vec<Token> = tokenizer.collect();
+        tokens.reverse();
 
-        Parser {
-            tokens: tokenizer.collect(),
-        }
+        Parser { tokens }
     }
 
     pub fn parse(&mut self) -> Program {
         let mut statements: Vec<Stmt> = vec![];
 
-        while self.tokens.len() > 0 {
-            statements.push(self.parse_stmt());
+        while self.peek().kind != TokenType::EOF {
+            statements.push(self.parse_statement());
         }
 
         Program { statements }
     }
 
-    fn eat(&mut self, token_type: TokenType) -> Token {
-        let token = self.tokens[0].clone();
-        if token.kind != token_type {
-            panic!("Unexpected token: {:?}", token);
+    fn peek(&self) -> Token {
+        let tok = self.tokens.last().cloned();
+        match tok {
+            None => eof_token!(),
+            Some(token) => token,
         }
+    }
 
-        self.tokens.remove(0);
+    fn eat(&mut self, token_type: TokenType) -> Token {
+        let token = self.advance();
+        if token.kind != token_type {
+            panic!("Expected {:?}, got {:?}", token_type, token.kind);
+        }
 
         return token;
     }
 
-    // fn peek(&self) -> Option<Token> {
-    //     let tok = self.tokens.get(1);
-    //     match tok {
-    //         Some(t) => Some(t.clone()),
-    //         None => None,
-    //     }
-    // }
+    fn advance(&mut self) -> Token {
+        let current = self.peek().clone();
 
-    fn at(&self) -> Token {
-        self.tokens[0].clone()
-    }
-
-    fn parse_stmt(&mut self) -> Stmt {
-        match self.at().kind {
-            _ => Stmt::Expression(self.parse_expr()),
+        let next = self.tokens.pop();
+        match next {
+            None => eof_token!(),
+            Some(_new) => current,
         }
     }
 
-    fn parse_expr(&mut self) -> Expr {
-        self.parse_assignment_expr()
+    fn parse_statement(&mut self) -> Stmt {
+        match self.peek().kind {
+            TokenType::Let => self.parse_var_declaration(),
+            TokenType::Const => self.parse_var_declaration(),
+            _ => Stmt::Expression(self.parse_expression()),
+        }
     }
 
-    fn parse_assignment_expr(&mut self) -> Expr {
-        let left = self.parse_additive_expr();
+    fn parse_var_declaration(&mut self) -> Stmt {
+        let is_const: bool;
+        let var_type = self.eat(self.peek().kind);
+        match var_type.kind {
+            TokenType::Let => is_const = false,
+            TokenType::Const => is_const = true,
+            _ => panic!("Expected let or const, got {:?}", var_type.kind),
+        };
 
-        if self.at().kind == TokenType::Equal {
-            self.eat(TokenType::Equal);
-            let right = self.parse_assignment_expr();
+        let identifier = self.eat(TokenType::Identifier);
+        self.eat(TokenType::Equal);
+        let expr = self.parse_expression();
 
-            return Expr::Assignment(Box::new(left), Box::new(right));
-        }
+        Stmt::VarDeclaration(identifier.value, is_const, expr)
+    }
 
-        return left;
+    fn parse_expression(&mut self) -> Expr {
+        self.parse_additive_expr()
     }
 
     fn parse_additive_expr(&mut self) -> Expr {
-        let left = self.parse_multiplicative_expr();
+        let mut expr = self.parse_multiplicative_expr();
 
-        while self.at().kind == TokenType::Plus || self.at().kind == TokenType::Minus {
-            let op = self.eat(self.at().kind);
+        while self.peek().kind == TokenType::Plus || self.peek().kind == TokenType::Minus {
+            let op = self.advance();
             let right = self.parse_multiplicative_expr();
 
-            return Expr::Binary(Box::new(left), Atom::String(op.value), Box::new(right));
+            expr = Expr::Binary(Box::new(expr), op, Box::new(right));
         }
 
-        return left;
+        expr
     }
 
     fn parse_multiplicative_expr(&mut self) -> Expr {
-        let left = self.parse_primary();
+        let mut expr = self.parse_primary_expr();
 
-        while self.at().kind == TokenType::Star || self.at().kind == TokenType::Slash {
-            let op = self.eat(self.at().kind);
-            let right = self.parse_primary();
+        while self.peek().kind == TokenType::Star || self.peek().kind == TokenType::Slash {
+            let op = self.advance();
+            let right = self.parse_primary_expr();
 
-            return Expr::Binary(Box::new(left), Atom::String(op.value), Box::new(right));
+            expr = Expr::Binary(Box::new(expr), op, Box::new(right));
         }
 
-        return left;
+        expr
     }
 
-    fn parse_primary(&mut self) -> Expr {
-        match self.at().kind {
-            TokenType::String => Expr::Literal(Atom::String(self.eat(TokenType::String).value)),
-            TokenType::Float => Expr::Literal(Atom::Float(
-                self.eat(TokenType::Float)
-                    .value
-                    .parse()
-                    .expect("Invalid float"),
-            )),
+    fn parse_primary_expr(&mut self) -> Expr {
+        match self.peek().kind {
             TokenType::Integer => Expr::Literal(Atom::Integer(
                 self.eat(TokenType::Integer)
                     .value
                     .parse()
-                    .expect("Invalid integer"),
+                    .expect("Parser error: expected integer"),
             )),
+            TokenType::Float => Expr::Literal(Atom::Float(
+                self.eat(TokenType::Float)
+                    .value
+                    .parse()
+                    .expect("Parser error: expected float"),
+            )),
+            TokenType::String => Expr::Literal(Atom::String(self.eat(TokenType::String).value)),
             TokenType::OpenParen => {
                 self.eat(TokenType::OpenParen);
-                let expr = self.parse_expr();
+                let expr = self.parse_expression();
                 self.eat(TokenType::CloseParen);
                 expr
             }
-            _ => panic!("Parser error: unexpected token: {:#?}", self.at()),
+            _ => panic!("Parser error: unexpected token: {:?}", self.peek().kind),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_let_var_declaration() {
+        let mut parser = Parser::new("let x = 1");
+        let ast = parser.parse();
+
+        assert_eq!(
+            ast.statements[0],
+            Stmt::VarDeclaration("x".to_string(), false, Expr::Literal(Atom::Integer(1)))
+        );
+    }
+
+    #[test]
+    fn test_const_var_declaration() {
+        let mut parser = Parser::new("const x = 1");
+        let ast = parser.parse();
+
+        assert_eq!(
+            ast.statements[0],
+            Stmt::VarDeclaration("x".to_string(), true, Expr::Literal(Atom::Integer(1)))
+        );
     }
 }

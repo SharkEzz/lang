@@ -1,22 +1,26 @@
 use super::{Token, TokenType};
 use regex::Regex;
 
-const SPECS: [(TokenType, &str); 13] = [
+const SPECS: &'static [(TokenType, &str)] = &[
     (TokenType::Float, r"^\d+\.(\d+)?"),
     (TokenType::Integer, r"^\d+"),
     (TokenType::String, r"^'(?P<raw>[^']*)'"),
     (TokenType::String, "^\"(?P<raw>[^\"]*)\""),
+    // Symbols
     (TokenType::Equal, r"^="),
-    (TokenType::Plus, r"^+"),
+    (TokenType::Plus, r"^\+"),
     (TokenType::Minus, r"^-"),
-    (TokenType::Star, r"^*"),
+    (TokenType::Star, r"^\*"),
     (TokenType::Slash, r"^/"),
     (TokenType::OpenParen, r"^\("),
     (TokenType::CloseParen, r"^\)"),
     // Keywords
     (TokenType::Let, r"^let"),
+    (TokenType::Const, r"^const"),
     // Special tokens
+    (TokenType::Identifier, r"^[a-zA-Z_][a-zA-Z0-9_]*"),
     (TokenType::Skipped, r"^\s+"),
+    (TokenType::EOF, r"^\s+"),
 ];
 
 pub struct Tokenizer {
@@ -31,10 +35,11 @@ impl Tokenizer {
             position: 0,
             source: source.to_string(),
             compiled_specs: SPECS
-                .iter()
+                .to_owned()
+                .into_iter()
                 .map(|(token_type, regexp)| {
                     (
-                        *token_type,
+                        token_type,
                         Regex::new(regexp).expect("Invalid regular expression"),
                     )
                 })
@@ -52,8 +57,8 @@ impl Tokenizer {
             Some(m) => {
                 length = m.end() - m.start();
             }
-            None => length = 1,
-        }
+            None => return (0, None),
+        };
 
         for capture in captures {
             match capture.name("raw") {
@@ -70,24 +75,25 @@ impl Iterator for Tokenizer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let current_str = &self.source[self.position..];
+        let substr = &self.source.get(self.position..);
+        if substr.is_none() {
+            return None;
+        }
 
-        for (token_type, regexp) in self.compiled_specs.iter() {
-            let (length, token_value) = self.match_string(&regexp, current_str);
+        for (token_type, regex) in &self.compiled_specs {
+            let (length, value) = self.match_string(regex, substr.unwrap());
+
             self.position += length;
-            if token_value.is_none() {
-                continue;
-            }
 
-            match token_value {
+            match value {
+                // If we have no match with the current regex, try the next one
                 None => continue,
                 Some(value) => match token_type {
-                    TokenType::Skipped => {
-                        return self.next();
-                    }
+                    // If the current token is skipped, call ourself to get the next one
+                    TokenType::Skipped => return self.next(),
                     _ => {
                         return Some(Token {
-                            kind: *token_type,
+                            kind: token_type.to_owned(),
                             value,
                         });
                     }
@@ -95,12 +101,13 @@ impl Iterator for Tokenizer {
             }
         }
 
+        // If we reach this point, it means that we have no match for the current character
         if self.position < self.source.len() {
             panic!(
-                "Unexpected token: {} at position {}",
-                &self.source[self.position..],
+                "Unexpected character: {} at position {}",
+                &self.source[self.position..self.position + 1],
                 self.position
-            )
+            );
         }
 
         None

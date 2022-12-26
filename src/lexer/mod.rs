@@ -1,29 +1,43 @@
 pub mod tokenizer;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     Integer,
     Float,
     String,
 
+    // Symbols
     Equal,
     Plus,
     Minus,
     Star,
     Slash,
-
     OpenParen,
     CloseParen,
 
-    // Identifiers
+    // Keywords
     Let,
+    Const,
 
     // Special tokens
+    Identifier,
     Skipped,
+    EOF,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub kind: TokenType,
     pub value: String,
+}
+
+/// Create a new EOF type token.
+#[macro_export]
+macro_rules! eof_token {
+    () => {
+        Token {
+            kind: TokenType::EOF,
+            value: "EOF".to_string(),
+        }
+    };
 }

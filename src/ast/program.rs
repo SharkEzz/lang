@@ -12,10 +12,9 @@ impl Debug for Program {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Stmt {
-    // name - is constant? - value
-    VarDecl(String, bool, Box<Expr>),
-    Statement(Box<Stmt>),
+    // name, is_const, value
+    VarDeclaration(String, bool, Expr),
     Expression(Expr),
 }
