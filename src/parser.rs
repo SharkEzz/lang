@@ -1,11 +1,7 @@
 use std::vec;
 
 use crate::{
-    ast::{
-        atom::Atom,
-        expr::Expr,
-        program::{Program, Stmt},
-    },
+    ast::{atom::Atom, expr::Expr, program::Program, stmt::Stmt},
     eof_token,
     lexer::{tokenizer::Tokenizer, Token, TokenType},
 };
@@ -28,6 +24,7 @@ impl Parser {
 
         while self.peek().kind != TokenType::EOF {
             statements.push(self.parse_statement());
+            self.eat(TokenType::SemiColon);
         }
 
         Program { statements }
@@ -85,7 +82,9 @@ impl Parser {
     }
 
     fn parse_expression(&mut self) -> Expr {
-        self.parse_additive_expr()
+        match self.peek().kind {
+            _ => self.parse_additive_expr(),
+        }
     }
 
     fn parse_additive_expr(&mut self) -> Expr {
@@ -135,6 +134,7 @@ impl Parser {
                 self.eat(TokenType::CloseParen);
                 expr
             }
+            TokenType::Identifier => Expr::Identifier(self.eat(TokenType::Identifier).value),
             _ => panic!("Parser error: unexpected token: {:?}", self.peek().kind),
         }
     }
@@ -146,7 +146,7 @@ mod test {
 
     #[test]
     fn test_let_var_declaration() {
-        let mut parser = Parser::new("let x = 1");
+        let mut parser = Parser::new("let x = 1;");
         let ast = parser.parse();
 
         assert_eq!(
@@ -157,7 +157,7 @@ mod test {
 
     #[test]
     fn test_const_var_declaration() {
-        let mut parser = Parser::new("const x = 1");
+        let mut parser = Parser::new("const x = 1;");
         let ast = parser.parse();
 
         assert_eq!(

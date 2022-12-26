@@ -14,6 +14,7 @@ pub enum TokenType {
     Slash,
     OpenParen,
     CloseParen,
+    SemiColon,
 
     // Keywords
     Let,

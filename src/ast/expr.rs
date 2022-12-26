@@ -6,5 +6,6 @@ use super::atom::Atom;
 pub enum Expr {
     // left, operator, right
     Binary(Box<Expr>, Token, Box<Expr>),
+    Identifier(String),
     Literal(Atom),
 }

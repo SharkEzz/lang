@@ -14,6 +14,7 @@ const SPECS: &'static [(TokenType, &str)] = &[
     (TokenType::Slash, r"^/"),
     (TokenType::OpenParen, r"^\("),
     (TokenType::CloseParen, r"^\)"),
+    (TokenType::SemiColon, r"^;"),
     // Keywords
     (TokenType::Let, r"^let"),
     (TokenType::Const, r"^const"),
