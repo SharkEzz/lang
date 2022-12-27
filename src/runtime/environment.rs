@@ -1,22 +1,24 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use super::values::RuntimeVal;
+use super::values::{RuntimeError, RuntimeVal};
 
 pub struct Environment {
-    pub parent: Option<Box<Environment>>,
-    pub variables: HashMap<String, RuntimeVal>,
+    parent: Option<Box<Environment>>,
+    variables: HashMap<String, RuntimeVal>,
+    constants: HashSet<String>,
 }
 
 impl Environment {
     pub fn new(parent: Option<Box<Environment>>) -> Environment {
-        let should_setup_builtins = parent.is_none();
+        let has_parent = parent.is_some();
 
         let mut env = Environment {
             parent,
             variables: HashMap::new(),
+            constants: HashSet::new(),
         };
 
-        if should_setup_builtins {
+        if has_parent {
             env.setup_builtins();
         }
 
@@ -33,17 +35,29 @@ impl Environment {
         }
     }
 
-    pub fn set(&mut self, name: String, value: RuntimeVal) {
-        if self.variables.contains_key(&name) {
-            panic!("Variable {} already exists", name);
+    pub fn set(
+        &mut self,
+        name: String,
+        value: RuntimeVal,
+        is_const: bool,
+    ) -> Result<(), RuntimeError> {
+        if is_const && self.constants.contains(&name) {
+            return Err(RuntimeError::CannotRedefineConstant(format!(
+                "Cannot redeclare constant variable: {}",
+                name
+            )));
         }
 
         self.variables.insert(name, value);
+        Ok(())
     }
 
     fn setup_builtins(&mut self) {
-        self.set("true".to_string(), RuntimeVal::Bool(true));
-        self.set("false".to_string(), RuntimeVal::Bool(false));
-        self.set("null".to_string(), RuntimeVal::Null);
+        self.set("true".to_string(), RuntimeVal::Bool(true), true)
+            .expect("Failed to initialize builtins");
+        self.set("false".to_string(), RuntimeVal::Bool(false), true)
+            .expect("Failed to initialize builtins");
+        self.set("null".to_string(), RuntimeVal::Null, true)
+            .expect("Failed to initialize builtins");
     }
 }

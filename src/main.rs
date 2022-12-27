@@ -1,4 +1,7 @@
-use crate::{parser::Parser, runtime::environment::Environment};
+use crate::{
+    parser::Parser,
+    runtime::{environment::Environment, interpreter::Interpreter},
+};
 use std::{env::args, fs};
 
 mod ast;
@@ -12,8 +15,12 @@ fn main() {
 
     let mut parser = Parser::new(content.as_str());
     let program = parser.parse();
-
-    let environment = Environment::new(None);
-
     println!("{:#?}", program);
+    println!("------------");
+
+    let mut environment = Environment::new(None);
+    let runtime = Interpreter {};
+
+    let result = runtime.evaluate_program(&program, &mut environment);
+    println!("{:#?}", result);
 }

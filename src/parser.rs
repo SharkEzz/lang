@@ -136,7 +136,7 @@ impl Parser {
             let op = self.advance();
             let right = self.parse_multiplicative_expr();
 
-            expr = Expr::Binary(Box::new(expr), op, Box::new(right));
+            expr = Expr::Binary(Box::new(expr), op.kind, Box::new(right));
         }
 
         expr
@@ -149,7 +149,7 @@ impl Parser {
             let op = self.advance();
             let right = self.parse_func_call_expr();
 
-            expr = Expr::Binary(Box::new(expr), op, Box::new(right));
+            expr = Expr::Binary(Box::new(expr), op.kind, Box::new(right));
         }
 
         expr

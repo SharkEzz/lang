@@ -6,3 +6,10 @@ pub enum RuntimeVal {
     String(String),
     Null,
 }
+
+#[derive(Debug)]
+pub enum RuntimeError {
+    CannotRedefineConstant(String),
+    InvalidOperandType,
+    DivisionByZero,
+}
