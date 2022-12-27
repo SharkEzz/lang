@@ -1,10 +1,12 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::{
     ast::{atom::Atom, expr::Expr, program::Program, stmt::Stmt},
     lexer::TokenType,
 };
 
 use super::{
-    environment::Environment,
+    environment::{Env, Environment},
     values::{RuntimeError, RuntimeVal},
 };
 
@@ -14,25 +16,71 @@ impl Interpreter {
     pub fn evaluate_program(
         &self,
         program: &Program,
-        env: &mut Environment,
+        env: Env,
     ) -> Result<RuntimeVal, RuntimeError> {
-        let mut result = RuntimeVal::Null;
+        let mut result = RuntimeVal::Undefined;
 
         for stmt in &program.statements {
-            result = self.evaluate(stmt, env)?;
+            result = self.evaluate(stmt, Rc::clone(&env))?;
         }
 
         Ok(result)
     }
 
-    fn evaluate(&self, stmt: &Stmt, env: &mut Environment) -> Result<RuntimeVal, RuntimeError> {
+    fn evaluate(&self, stmt: &Stmt, env: Env) -> Result<RuntimeVal, RuntimeError> {
         match stmt {
             Stmt::Expression(expr) => self.evaluate_expr(expr, env),
             Stmt::VarDeclaration(name, is_const, expr) => {
                 self.evaluate_var_declaration_stmt(name, is_const, expr, env)
             }
-            _ => unimplemented!("Statement not implemented"),
+            Stmt::FuncDeclaration(name, parameters, body) => {
+                self.evaluate_func_declaration_stmt(name, parameters, body, env)
+            }
+            Stmt::Block(stmts) => self.evaluate_block_stmt(stmts, env),
+            Stmt::Return(expr) => self.evaluate_return_stmt(expr, env),
         }
+    }
+
+    fn evaluate_func_declaration_stmt(
+        &self,
+        name: &str,
+        parameters: &[String],
+        body: &Stmt,
+        env: Env,
+    ) -> Result<RuntimeVal, RuntimeError> {
+        match body {
+            Stmt::Block(value) => {
+                let func =
+                    RuntimeVal::Func(name.to_string(), parameters.to_vec(), value.to_owned());
+                env.borrow_mut().declare_func(name, func.clone())?;
+                return Ok(func);
+            }
+            _ => panic!("Invalid function body"),
+        }
+    }
+
+    fn evaluate_return_stmt(&self, expr: &Expr, env: Env) -> Result<RuntimeVal, RuntimeError> {
+        let val = self.evaluate_expr(expr, env)?;
+        Ok(RuntimeVal::Return(Box::new(val)))
+    }
+
+    fn evaluate_block_stmt(&self, stmts: &[Stmt], env: Env) -> Result<RuntimeVal, RuntimeError> {
+        let mut values = vec![];
+        let mut return_val = Box::new(RuntimeVal::Undefined);
+        let block_env = Rc::new(RefCell::new(Environment::new(Some(Rc::clone(&env)))));
+
+        for stmt in stmts {
+            let val = self.evaluate(stmt, Rc::clone(&block_env))?;
+            match val {
+                RuntimeVal::Return(_) => {
+                    return_val = Box::new(val);
+                    break;
+                }
+                _ => values.push(val),
+            }
+        }
+
+        Ok(RuntimeVal::Block(return_val))
     }
 
     fn evaluate_var_declaration_stmt(
@@ -40,52 +88,50 @@ impl Interpreter {
         name: &str,
         is_const: &bool,
         expr: &Expr,
-        env: &mut Environment,
+        env: Env,
     ) -> Result<RuntimeVal, RuntimeError> {
-        let val = self.evaluate_expr(expr, env)?;
-        env.declare_var(name, val, *is_const)?;
-        Ok(RuntimeVal::Null)
+        let val = self.evaluate_expr(expr, Rc::clone(&env))?;
+        env.borrow_mut().declare_var(name, val, *is_const)?;
+        Ok(RuntimeVal::Undefined)
     }
 
-    fn evaluate_expr(
-        &self,
-        expr: &Expr,
-        env: &mut Environment,
-    ) -> Result<RuntimeVal, RuntimeError> {
+    fn evaluate_expr(&self, expr: &Expr, env: Env) -> Result<RuntimeVal, RuntimeError> {
         match expr {
             Expr::Binary(lhs, op, rhs) => self.evaluate_binary_expr(lhs, op, rhs, env),
+            Expr::CallExpr(name, params) => self.evaluate_func_call_expr(name, params, env),
             Expr::Assignment(lhs, _, rhs) => self.evaluate_assignment_expr(lhs, rhs, env),
             Expr::Identifier(name) => self.evaluate_identifier(name, env),
             Expr::Literal(val) => self.evaluate_literal(val),
-            _ => unimplemented!("Expression not implemented"),
         }
+    }
+
+    fn evaluate_func_call_expr(
+        &self,
+        name: &str,
+        params: &[Expr],
+        env: Env,
+    ) -> Result<RuntimeVal, RuntimeError> {
+        unimplemented!()
     }
 
     fn evaluate_assignment_expr(
         &self,
         lhs: &Expr,
         rhs: &Expr,
-        env: &mut Environment,
+        env: Env,
     ) -> Result<RuntimeVal, RuntimeError> {
         match lhs {
             Expr::Identifier(name) => {
-                let val = self.evaluate_expr(rhs, env)?;
-                env.assign_var(name, val)?;
-                Ok(RuntimeVal::Null)
+                let val = self.evaluate_expr(rhs, Rc::clone(&env))?;
+                env.borrow_mut().assign_var(name, val)?;
+                Ok(RuntimeVal::Undefined)
             }
             _ => Err(RuntimeError::InvalidOperandType),
         }
     }
 
-    fn evaluate_identifier(
-        &self,
-        name: &str,
-        env: &mut Environment,
-    ) -> Result<RuntimeVal, RuntimeError> {
-        match env.get(name) {
-            Some(val) => Ok(val.to_owned()),
-            None => Err(RuntimeError::UndefinedVariable(name.to_string())),
-        }
+    fn evaluate_identifier(&self, name: &str, env: Env) -> Result<RuntimeVal, RuntimeError> {
+        env.borrow().get_var(name)
     }
 
     fn evaluate_binary_expr(
@@ -93,10 +139,10 @@ impl Interpreter {
         lhs: &Expr,
         op: &TokenType,
         rhs: &Expr,
-        env: &mut Environment,
+        env: Env,
     ) -> Result<RuntimeVal, RuntimeError> {
-        let left = self.evaluate_expr(lhs, env)?;
-        let right = self.evaluate_expr(rhs, env)?;
+        let left = self.evaluate_expr(lhs, Rc::clone(&env))?;
+        let right = self.evaluate_expr(rhs, Rc::clone(&env))?;
 
         match left {
             RuntimeVal::Int(left) => match right {
@@ -160,5 +206,86 @@ impl Interpreter {
             Atom::Float(num) => Ok(RuntimeVal::Float(*num)),
             Atom::String(string) => Ok(RuntimeVal::String(string.clone())),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::{cell::RefCell, rc::Rc};
+
+    use crate::{parser::Parser, runtime::environment::Environment};
+
+    use super::*;
+
+    fn init(source: &str) -> Result<RuntimeVal, RuntimeError> {
+        let mut parser = Parser::new(source);
+        let program = parser.parse();
+
+        let env = Rc::new(RefCell::new(Environment::new(None)));
+        let runtime = Interpreter {};
+
+        runtime.evaluate_program(&program, env)
+    }
+
+    #[test]
+    fn additive_expr() {
+        let result = init("1 + 1").expect("Failed to evaluate");
+        assert_eq!(result, RuntimeVal::Int(2));
+    }
+
+    #[test]
+    fn substractive_expr() {
+        let result = init("1 - 2").expect("Failed to evaluate");
+        assert_eq!(result, RuntimeVal::Int(-1));
+    }
+
+    #[test]
+    fn multiplicative_expr() {
+        let result = init("2 * 2").expect("Failed to evaluate");
+        assert_eq!(result, RuntimeVal::Int(4));
+    }
+
+    #[test]
+    fn division_expr() {
+        let result = init("2 / 2").expect("Failed to evaluate");
+        assert_eq!(result, RuntimeVal::Int(1));
+    }
+
+    #[test]
+    fn division_by_zero_expr() {
+        let result = init("2 / 0");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), RuntimeError::DivisionByZero);
+    }
+
+    #[test]
+    fn operation_with_variables() {
+        let result = init(
+            "
+        let t = 1 + 1;
+        t * 2
+        ",
+        )
+        .expect("Failed to evaluate");
+        assert_eq!(result, RuntimeVal::Int(4));
+    }
+
+    #[test]
+    fn block() {
+        let result = init(
+            "
+        {
+            let t = 1 + 1;
+            t * 2
+
+            return t;
+        }
+        ",
+        )
+        .expect("Failed to evaluate");
+        assert_eq!(
+            result,
+            RuntimeVal::Block(Box::new(RuntimeVal::Return(Box::new(RuntimeVal::Int(2)))))
+        );
     }
 }

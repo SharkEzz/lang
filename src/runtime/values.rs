@@ -1,16 +1,22 @@
-#[derive(Debug, Clone)]
+use crate::ast::stmt::Stmt;
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum RuntimeVal {
     Int(i64),
     Float(f64),
     Bool(bool),
     String(String),
-    Null,
+    Func(String, Vec<String>, Vec<Stmt>),
+    Block(Box<RuntimeVal>),
+    Return(Box<RuntimeVal>),
+    Undefined,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum RuntimeError {
     ConstantReassignment(String),
     VarRedeclaration(String),
+    FuncRedeclaration(String),
     InvalidOperandType,
     DivisionByZero,
     UndefinedVariable(String),

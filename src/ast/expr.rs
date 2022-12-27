@@ -2,7 +2,7 @@ use crate::lexer::TokenType;
 
 use super::atom::Atom;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     // left, operator, right
     Binary(Box<Expr>, TokenType, Box<Expr>),

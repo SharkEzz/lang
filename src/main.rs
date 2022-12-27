@@ -2,7 +2,7 @@ use crate::{
     parser::Parser,
     runtime::{environment::Environment, interpreter::Interpreter},
 };
-use std::{env::args, fs};
+use std::{cell::RefCell, env::args, fs, rc::Rc};
 
 mod ast;
 mod lexer;
@@ -18,9 +18,9 @@ fn main() {
     println!("{:#?}", program);
     println!("------------");
 
-    let mut environment = Environment::new(None);
+    let env = Rc::new(RefCell::new(Environment::new(None)));
     let runtime = Interpreter {};
 
-    let result = runtime.evaluate_program(&program, &mut environment);
+    let result = runtime.evaluate_program(&program, env);
     println!("{:#?}", result);
 }
