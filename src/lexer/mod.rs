@@ -36,6 +36,8 @@ pub enum TokenType {
 pub struct Token {
     pub kind: TokenType,
     pub value: String,
+    pub start_pos: usize,
+    pub end_pos: usize,
 }
 
 /// Create a new EOF type token.
@@ -45,6 +47,8 @@ macro_rules! eof_token {
         Token {
             kind: TokenType::EOF,
             value: "EOF".to_string(),
+            start_pos: 0,
+            end_pos: 0,
         }
     };
 }

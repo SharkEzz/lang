@@ -18,7 +18,7 @@ impl Environment {
             constants: HashSet::new(),
         };
 
-        if has_parent {
+        if !has_parent {
             env.setup_builtins();
         }
 
@@ -35,29 +35,45 @@ impl Environment {
         }
     }
 
-    pub fn set(
+    pub fn declare_var(
         &mut self,
-        name: String,
+        name: &str,
         value: RuntimeVal,
         is_const: bool,
     ) -> Result<(), RuntimeError> {
-        if is_const && self.constants.contains(&name) {
-            return Err(RuntimeError::CannotRedefineConstant(format!(
-                "Cannot redeclare constant variable: {}",
-                name
-            )));
+        if self.variables.contains_key(name) {
+            return Err(RuntimeError::VarRedeclaration(name.to_string()));
         }
 
-        self.variables.insert(name, value);
+        self.variables.insert(name.to_string(), value);
+        if is_const {
+            self.constants.insert(name.to_string());
+        }
+
+        Ok(())
+    }
+
+    pub fn assign_var(&mut self, name: &str, value: RuntimeVal) -> Result<(), RuntimeError> {
+        let old_var = self.variables.remove(name);
+        match old_var {
+            None => return Err(RuntimeError::UndefinedVariable(name.to_string())),
+            Some(_) => {
+                if self.constants.contains(name) {
+                    return Err(RuntimeError::ConstantReassignment(name.to_string()));
+                }
+                self.variables.insert(name.to_string(), value);
+            }
+        }
+
         Ok(())
     }
 
     fn setup_builtins(&mut self) {
-        self.set("true".to_string(), RuntimeVal::Bool(true), true)
+        self.declare_var("true", RuntimeVal::Bool(true), true)
             .expect("Failed to initialize builtins");
-        self.set("false".to_string(), RuntimeVal::Bool(false), true)
+        self.declare_var("false", RuntimeVal::Bool(false), true)
             .expect("Failed to initialize builtins");
-        self.set("null".to_string(), RuntimeVal::Null, true)
+        self.declare_var("null", RuntimeVal::Null, true)
             .expect("Failed to initialize builtins");
     }
 }

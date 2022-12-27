@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RuntimeVal {
     Int(i64),
     Float(f64),
@@ -9,7 +9,9 @@ pub enum RuntimeVal {
 
 #[derive(Debug)]
 pub enum RuntimeError {
-    CannotRedefineConstant(String),
+    ConstantReassignment(String),
+    VarRedeclaration(String),
     InvalidOperandType,
     DivisionByZero,
+    UndefinedVariable(String),
 }

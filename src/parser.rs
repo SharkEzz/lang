@@ -68,9 +68,7 @@ impl Parser {
     }
 
     fn parse_expression(&mut self) -> Expr {
-        match self.peek().kind {
-            _ => self.parse_additive_expr(),
-        }
+        self.parse_assignment_expr()
     }
 
     fn parse_block_stmt(&mut self) -> Stmt {
@@ -127,6 +125,20 @@ impl Parser {
         self.eat(TokenType::SemiColon);
 
         Stmt::VarDeclaration(identifier.value, is_const, expr)
+    }
+
+    fn parse_assignment_expr(&mut self) -> Expr {
+        let left = self.parse_additive_expr();
+
+        if self.peek().kind == TokenType::Equal {
+            let op = self.advance();
+            let right = self.parse_assignment_expr();
+            self.eat(TokenType::SemiColon);
+
+            return Expr::Assignment(Box::new(left), op.kind, Box::new(right));
+        }
+
+        left
     }
 
     fn parse_additive_expr(&mut self) -> Expr {

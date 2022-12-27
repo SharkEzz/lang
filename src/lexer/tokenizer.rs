@@ -89,6 +89,8 @@ impl Iterator for Tokenizer {
         for (token_type, regex) in &self.compiled_specs {
             let (length, value) = self.match_string(regex, substr.unwrap());
 
+            let initial_pos = self.position;
+
             self.position += length;
 
             match value {
@@ -101,6 +103,8 @@ impl Iterator for Tokenizer {
                         return Some(Token {
                             kind: token_type.to_owned(),
                             value,
+                            start_pos: initial_pos,
+                            end_pos: self.position,
                         });
                     }
                 },
