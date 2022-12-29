@@ -44,14 +44,17 @@ impl Interpreter {
     fn evaluate_func_declaration_stmt(
         &self,
         name: &str,
-        parameters: &[String],
+        parameters: &Vec<String>,
         body: &Stmt,
         env: Env,
     ) -> Result<RuntimeVal, RuntimeError> {
         match body {
             Stmt::Block(value) => {
-                let func =
-                    RuntimeVal::Func(name.to_string(), parameters.to_vec(), value.to_owned());
+                let func = RuntimeVal::Func(
+                    name.to_string(),
+                    parameters.clone(),
+                    Stmt::Block(value.clone()),
+                );
                 env.borrow_mut().declare_func(name, func.clone())?;
                 return Ok(func);
             }
@@ -108,10 +111,22 @@ impl Interpreter {
     fn evaluate_func_call_expr(
         &self,
         name: &str,
-        params: &[Expr],
+        params: &Vec<Expr>,
         env: Env,
     ) -> Result<RuntimeVal, RuntimeError> {
-        unimplemented!()
+        let func = env.borrow().get_func(name)?;
+        match func {
+            RuntimeVal::Func(_, func_params, body) => {
+                let block_env = Rc::new(RefCell::new(Environment::new(Some(Rc::clone(&env)))));
+                for (i, name) in func_params.iter().enumerate() {
+                    let param_value = self.evaluate_expr(&params[i], Rc::clone(&block_env))?;
+                    env.borrow_mut().declare_var(name, param_value, false)?;
+                }
+
+                self.evaluate(&body, block_env)
+            }
+            _ => panic!("Expected a function"),
+        }
     }
 
     fn evaluate_assignment_expr(

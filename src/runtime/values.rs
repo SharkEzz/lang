@@ -6,7 +6,7 @@ pub enum RuntimeVal {
     Float(f64),
     Bool(bool),
     String(String),
-    Func(String, Vec<String>, Vec<Stmt>),
+    Func(String, Vec<String>, Stmt),
     Block(Box<RuntimeVal>),
     Return(Box<RuntimeVal>),
     Undefined,
@@ -20,4 +20,5 @@ pub enum RuntimeError {
     InvalidOperandType,
     DivisionByZero,
     UndefinedVariable(String),
+    UndefinedFunction(String),
 }

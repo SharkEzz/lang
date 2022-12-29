@@ -54,7 +54,7 @@ impl Environment {
     }
 
     pub fn declare_func(&mut self, name: &str, value: RuntimeVal) -> Result<(), RuntimeError> {
-        if self.functions.contains_key(name) {
+        if self.variables.contains_key(name) {
             return Err(RuntimeError::FuncRedeclaration(name.to_string()));
         }
 
