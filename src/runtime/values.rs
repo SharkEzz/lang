@@ -22,4 +22,5 @@ pub enum RuntimeError {
     UndefinedVariable(String),
     UndefinedFunction(String),
     InvalidFuncCallParametersCount(String),
+    InvalidType,
 }

@@ -30,15 +30,24 @@ impl Interpreter {
     fn evaluate(&self, stmt: &Stmt, env: Env) -> Result<RuntimeVal, RuntimeError> {
         match stmt {
             Stmt::Expression(expr) => self.evaluate_expr(expr, env),
-            Stmt::VarDeclaration(name, is_const, expr) => {
-                self.evaluate_var_declaration_stmt(name, is_const, expr, env)
+            Stmt::VarDeclaration(name, typing, is_const, expr) => {
+                self.evaluate_var_declaration_stmt(name, typing, is_const, expr, env)
             }
             Stmt::FuncDeclaration(name, parameters, body) => {
                 self.evaluate_func_declaration_stmt(name, parameters, body, env)
             }
             Stmt::Block(stmts) => self.evaluate_block_stmt(stmts, env),
+            Stmt::Print(expr) => self.evaluate_print_expr(expr, env),
             Stmt::Return(expr) => self.evaluate_return_stmt(expr, env),
         }
+    }
+
+    fn evaluate_print_expr(&self, expr: &Expr, env: Env) -> Result<RuntimeVal, RuntimeError> {
+        let value = self.evaluate_expr(expr, env)?;
+
+        println!("{:?}", value);
+
+        Ok(RuntimeVal::Undefined)
     }
 
     fn evaluate_func_declaration_stmt(
@@ -89,12 +98,38 @@ impl Interpreter {
     fn evaluate_var_declaration_stmt(
         &self,
         name: &str,
+        typing: &TokenType,
         is_const: &bool,
         expr: &Expr,
         env: Env,
     ) -> Result<RuntimeVal, RuntimeError> {
-        let val = self.evaluate_expr(expr, Rc::clone(&env))?;
-        env.borrow_mut().declare_var(name, val, *is_const)?;
+        let value = self.evaluate_expr(expr, Rc::clone(&env))?;
+
+        match value {
+            RuntimeVal::Int(_) => {
+                if *typing != TokenType::Integer {
+                    return Err(RuntimeError::InvalidType);
+                }
+            }
+            RuntimeVal::Float(_) => {
+                if *typing != TokenType::Float {
+                    return Err(RuntimeError::InvalidType);
+                }
+            }
+            RuntimeVal::String(_) => {
+                if *typing != TokenType::String {
+                    return Err(RuntimeError::InvalidType);
+                }
+            }
+            RuntimeVal::Bool(_) => {
+                if *typing != TokenType::Bool {
+                    return Err(RuntimeError::InvalidType);
+                }
+            }
+            _ => {}
+        }
+
+        env.borrow_mut().declare_var(name, value, *is_const)?;
         Ok(RuntimeVal::Undefined)
     }
 
@@ -292,7 +327,7 @@ mod test {
     fn operation_with_variables() {
         let result = evaluate(
             "
-        let t = 1 + 1;
+        let t: int = 1 + 1;
         t * 2
         ",
         )
@@ -301,11 +336,21 @@ mod test {
     }
 
     #[test]
+    fn var_declaration_invalid_type() {
+        let result = evaluate("let t: int = 1 + 1.1;");
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().expect("Failed to get error"),
+            RuntimeError::InvalidType
+        );
+    }
+
+    #[test]
     fn block() {
         let result = evaluate(
             "
         {
-            let t = 1 + 1;
+            let t: int = 1 + 1;
             t * 2
 
             return t;

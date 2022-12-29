@@ -63,12 +63,22 @@ impl Parser {
             TokenType::Func => self.parse_func_declaration(),
             TokenType::Return => self.parse_return_stmt(),
             TokenType::OpenBrace => self.parse_block_stmt(),
+            TokenType::Print => self.parse_print_stmt(),
             _ => Stmt::Expression(self.parse_expression()),
         }
     }
 
     fn parse_expression(&mut self) -> Expr {
         self.parse_assignment_expr()
+    }
+
+    fn parse_print_stmt(&mut self) -> Stmt {
+        self.eat(TokenType::Print);
+        let expr = self.parse_expression();
+
+        self.eat(TokenType::SemiColon);
+
+        Stmt::Print(expr)
     }
 
     fn parse_block_stmt(&mut self) -> Stmt {
@@ -119,12 +129,21 @@ impl Parser {
         };
 
         let identifier = self.eat(TokenType::Identifier);
+
+        self.eat(TokenType::Colon);
+        let typing = match self.eat(self.peek().kind).kind {
+            TokenType::IntType => TokenType::Integer,
+            TokenType::FloatType => TokenType::Float,
+            TokenType::StringType => TokenType::String,
+            _ => panic!("Invalid variable type"),
+        };
+
         self.eat(TokenType::Equal);
         let expr = self.parse_expression();
 
         self.eat(TokenType::SemiColon);
 
-        Stmt::VarDeclaration(identifier.value, is_const, expr)
+        Stmt::VarDeclaration(identifier.value, typing, is_const, expr)
     }
 
     fn parse_assignment_expr(&mut self) -> Expr {
@@ -224,23 +243,33 @@ mod test {
 
     #[test]
     fn test_let_var_declaration() {
-        let mut parser = Parser::new("let x = 1;");
+        let mut parser = Parser::new("let x: int = 1;");
         let ast = parser.parse();
 
         assert_eq!(
             ast.statements[0],
-            Stmt::VarDeclaration("x".to_string(), false, Expr::Literal(Atom::Integer(1)))
+            Stmt::VarDeclaration(
+                "x".to_string(),
+                TokenType::Integer,
+                false,
+                Expr::Literal(Atom::Integer(1))
+            )
         );
     }
 
     #[test]
     fn test_const_var_declaration() {
-        let mut parser = Parser::new("const x = 1;");
+        let mut parser = Parser::new("const x: float = 1.1;");
         let ast = parser.parse();
 
         assert_eq!(
             ast.statements[0],
-            Stmt::VarDeclaration("x".to_string(), true, Expr::Literal(Atom::Integer(1)))
+            Stmt::VarDeclaration(
+                "x".to_string(),
+                TokenType::Float,
+                true,
+                Expr::Literal(Atom::Float(1.1))
+            )
         );
     }
 }

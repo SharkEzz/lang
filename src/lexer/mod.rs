@@ -6,6 +6,7 @@ pub enum TokenType {
     Integer,
     Float,
     String,
+    Bool,
 
     // Symbols
     Equal,
@@ -19,12 +20,18 @@ pub enum TokenType {
     OpenBrace,
     CloseBrace,
     Comma,
+    Colon,
 
     // Keywords
     Let,
     Const,
     Func,
     Return,
+    Print,      // print
+    IntType,    // int
+    FloatType,  // float
+    StringType, // string
+    BoolType,   // bool
 
     // Special tokens
     Identifier,

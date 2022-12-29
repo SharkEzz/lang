@@ -6,6 +6,7 @@ const SPECS: &[(TokenType, &str)] = &[
     (TokenType::Integer, r"^\d+"),
     (TokenType::String, r"^'(?P<raw>[^']*)'"),
     (TokenType::String, "^\"(?P<raw>[^\"]*)\""),
+    (TokenType::Bool, "^(true|false)"),
     // Symbols
     (TokenType::Equal, r"^="),
     (TokenType::Plus, r"^\+"),
@@ -18,11 +19,17 @@ const SPECS: &[(TokenType, &str)] = &[
     (TokenType::OpenBrace, r"^\{"),
     (TokenType::CloseBrace, r"^}"),
     (TokenType::Comma, r"^,"),
+    (TokenType::Colon, r"^:"),
     // Keywords
     (TokenType::Let, r"^let"),
     (TokenType::Const, r"^const"),
     (TokenType::Func, r"^func"),
     (TokenType::Return, r"^return"),
+    (TokenType::Print, r"^print"),
+    (TokenType::IntType, r"^int"),
+    (TokenType::FloatType, r"^float"),
+    (TokenType::StringType, r"^string"),
+    (TokenType::BoolType, r"^bool"),
     // Special tokens
     (TokenType::Identifier, r"^[a-zA-Z_][a-zA-Z0-9_]*"),
     (TokenType::Skipped, r"^\s+"),
