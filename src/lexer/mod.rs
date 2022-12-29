@@ -47,17 +47,19 @@ pub struct Token {
     pub value: String,
     pub line: usize,
     pub column: usize,
+    pub end_column: usize,
 }
 
 /// Create a new EOF type token.
 #[macro_export]
 macro_rules! eof_token {
-    () => {
+    ($l:expr, $c:expr, $e:expr) => {
         Token {
             kind: TokenType::EOF,
             value: "EOF".to_string(),
-            line: 0,
-            column: 0,
+            line: $l,
+            column: $c,
+            end_column: $e,
         }
     };
 }

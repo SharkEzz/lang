@@ -28,14 +28,14 @@ fn main() {
 
     if is_debug {
         println!("{:#?}", program);
-        println!("------------");
+        println!("----- Result -----");
     }
 
     let env = Rc::new(RefCell::new(Environment::new(None)));
     let runtime = Interpreter {};
 
     let result = runtime.evaluate_program(&program, env);
-    if is_debug {
+    if is_debug || result.is_err() {
         println!("{:#?}", result);
     }
 }

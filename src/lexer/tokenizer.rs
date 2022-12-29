@@ -125,6 +125,7 @@ impl Iterator for Tokenizer {
                             value,
                             line: self.line,
                             column: self.offset,
+                            end_column: self.offset + length,
                         });
                         self.offset += length;
 

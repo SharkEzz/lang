@@ -8,15 +8,20 @@ use crate::{
 
 pub struct Parser {
     tokens: Vec<Token>,
+    previous: Option<Token>,
 }
 
 impl Parser {
     pub fn new(source: &str) -> Self {
         let tokenizer = Tokenizer::new(source);
         let mut tokens: Vec<Token> = tokenizer.collect();
+
         tokens.reverse();
 
-        Parser { tokens }
+        Parser {
+            tokens,
+            previous: None,
+        }
     }
 
     pub fn parse(&mut self) -> Program {
@@ -35,9 +40,15 @@ impl Parser {
     }
 
     fn peek(&self) -> Token {
+        let latest_token = self.previous.clone().unwrap_or(eof_token!(0, 0, 0));
+
         let tok = self.tokens.last().cloned();
         match tok {
-            None => eof_token!(),
+            None => eof_token!(
+                latest_token.line,
+                latest_token.column,
+                latest_token.end_column
+            ),
             Some(token) => token,
         }
     }
@@ -45,8 +56,13 @@ impl Parser {
     fn eat(&mut self, token_type: TokenType) -> Token {
         let token = self.advance();
         if token.kind != token_type {
-            panic!("Expected {:?}, got {:?}", token_type, token.kind);
+            panic!(
+                "Expected {:?}, got {:?} at line {} and column {}",
+                token_type, token.kind, token.line, token.end_column,
+            );
         }
+
+        self.previous = Some(token.clone());
 
         return token;
     }
@@ -56,7 +72,7 @@ impl Parser {
 
         let next = self.tokens.pop();
         match next {
-            None => eof_token!(),
+            None => eof_token!(self.peek().line, self.peek().column, self.peek().end_column),
             Some(_new) => current,
         }
     }
