@@ -45,7 +45,7 @@ impl Interpreter {
     fn evaluate_print_expr(&self, expr: &Expr, env: Env) -> Result<RuntimeVal, RuntimeError> {
         let value = self.evaluate_expr(expr, env)?;
 
-        println!("{:?}", value);
+        println!("{}", value);
 
         Ok(RuntimeVal::Undefined)
     }

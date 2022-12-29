@@ -7,6 +7,8 @@ const SPECS: &[(TokenType, &str)] = &[
     (TokenType::String, r"^'(?P<raw>[^']*)'"),
     (TokenType::String, "^\"(?P<raw>[^\"]*)\""),
     (TokenType::Bool, "^(true|false)"),
+    // Comment
+    (TokenType::Comment, r"^//.*"),
     // Symbols
     (TokenType::Equal, r"^="),
     (TokenType::Plus, r"^\+"),
@@ -32,11 +34,14 @@ const SPECS: &[(TokenType, &str)] = &[
     (TokenType::BoolType, r"^bool"),
     // Special tokens
     (TokenType::Identifier, r"^[a-zA-Z_][a-zA-Z0-9_]*"),
+    (TokenType::EOL, r"^\n+"),
     (TokenType::Skipped, r"^\s+"),
     (TokenType::EOF, r"^\s+"),
 ];
 
 pub struct Tokenizer {
+    line: usize,
+    offset: usize,
     position: usize,
     source: String,
     compiled_specs: Vec<(TokenType, Regex)>,
@@ -45,6 +50,8 @@ pub struct Tokenizer {
 impl Tokenizer {
     pub fn new(source: &str) -> Self {
         Tokenizer {
+            line: 0,
+            offset: 0,
             position: 0,
             source: source.to_string(),
             compiled_specs: SPECS
@@ -96,8 +103,6 @@ impl Iterator for Tokenizer {
         for (token_type, regex) in &self.compiled_specs {
             let (length, value) = self.match_string(regex, substr.unwrap());
 
-            let initial_pos = self.position;
-
             self.position += length;
 
             match value {
@@ -105,14 +110,25 @@ impl Iterator for Tokenizer {
                 None => continue,
                 Some(value) => match token_type {
                     // If the current token is skipped, call ourself to get the next one
-                    TokenType::Skipped => return self.next(),
+                    TokenType::EOL => {
+                        self.line += length;
+                        self.offset = 0;
+                        return self.next();
+                    }
+                    TokenType::Skipped => {
+                        self.offset += 1;
+                        return self.next();
+                    }
                     _ => {
-                        return Some(Token {
+                        let tok = Some(Token {
                             kind: token_type.to_owned(),
                             value,
-                            start_pos: initial_pos,
-                            end_pos: self.position,
+                            line: self.line,
+                            column: self.offset,
                         });
+                        self.offset += length;
+
+                        return tok;
                     }
                 },
             }

@@ -23,6 +23,11 @@ impl Parser {
         let mut statements: Vec<Stmt> = vec![];
 
         while self.peek().kind != TokenType::EOF {
+            if self.peek().kind == TokenType::Comment {
+                self.eat(TokenType::Comment);
+                continue;
+            }
+
             statements.push(self.parse_statement());
         }
 
