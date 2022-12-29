@@ -117,13 +117,28 @@ impl Interpreter {
         let func = env.borrow().get_func(name)?;
         match func {
             RuntimeVal::Func(_, func_params, body) => {
-                let block_env = Rc::new(RefCell::new(Environment::new(Some(Rc::clone(&env)))));
-                for (i, name) in func_params.iter().enumerate() {
-                    let param_value = self.evaluate_expr(&params[i], Rc::clone(&block_env))?;
-                    env.borrow_mut().declare_var(name, param_value, false)?;
+                if func_params.len() != params.len() {
+                    return Err(RuntimeError::InvalidFuncCallParametersCount(
+                        name.to_string(),
+                    ));
                 }
 
-                self.evaluate(&body, block_env)
+                let block_env = Rc::new(RefCell::new(Environment::new(None)));
+                for (i, param_name) in func_params.iter().enumerate() {
+                    let param_value = self.evaluate_expr(&params[i], Rc::clone(&block_env))?;
+                    block_env
+                        .borrow_mut()
+                        .declare_var(param_name, param_value, false)?;
+                }
+
+                let result = self.evaluate(&body, block_env)?;
+                match result {
+                    RuntimeVal::Block(val) => match *val {
+                        RuntimeVal::Return(val) => Ok(*val),
+                        _ => Ok(RuntimeVal::Undefined),
+                    },
+                    _ => panic!("Expected block"),
+                }
             }
             _ => panic!("Expected a function"),
         }
@@ -211,7 +226,7 @@ impl Interpreter {
                 },
                 _ => Err(RuntimeError::InvalidOperandType),
             },
-            _ => unimplemented!("Binary expression not implemented"),
+            _ => unimplemented!("Binary expression not implemented for {:?}", left),
         }
     }
 
@@ -232,7 +247,7 @@ mod test {
 
     use super::*;
 
-    fn init(source: &str) -> Result<RuntimeVal, RuntimeError> {
+    fn evaluate(source: &str) -> Result<RuntimeVal, RuntimeError> {
         let mut parser = Parser::new(source);
         let program = parser.parse();
 
@@ -244,38 +259,38 @@ mod test {
 
     #[test]
     fn additive_expr() {
-        let result = init("1 + 1").expect("Failed to evaluate");
+        let result = evaluate("1 + 1").expect("Failed to evaluate");
         assert_eq!(result, RuntimeVal::Int(2));
     }
 
     #[test]
     fn substractive_expr() {
-        let result = init("1 - 2").expect("Failed to evaluate");
+        let result = evaluate("1 - 2").expect("Failed to evaluate");
         assert_eq!(result, RuntimeVal::Int(-1));
     }
 
     #[test]
     fn multiplicative_expr() {
-        let result = init("2 * 2").expect("Failed to evaluate");
+        let result = evaluate("2 * 2").expect("Failed to evaluate");
         assert_eq!(result, RuntimeVal::Int(4));
     }
 
     #[test]
     fn division_expr() {
-        let result = init("2 / 2").expect("Failed to evaluate");
+        let result = evaluate("2 / 2").expect("Failed to evaluate");
         assert_eq!(result, RuntimeVal::Int(1));
     }
 
     #[test]
     fn division_by_zero_expr() {
-        let result = init("2 / 0");
+        let result = evaluate("2 / 0");
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), RuntimeError::DivisionByZero);
     }
 
     #[test]
     fn operation_with_variables() {
-        let result = init(
+        let result = evaluate(
             "
         let t = 1 + 1;
         t * 2
@@ -287,7 +302,7 @@ mod test {
 
     #[test]
     fn block() {
-        let result = init(
+        let result = evaluate(
             "
         {
             let t = 1 + 1;
@@ -302,5 +317,35 @@ mod test {
             result,
             RuntimeVal::Block(Box::new(RuntimeVal::Return(Box::new(RuntimeVal::Int(2)))))
         );
+    }
+
+    #[test]
+    fn func_call_int() {
+        let result = evaluate(
+            "
+        func test(param1) {
+            return param1 * 2;
+        }
+
+        test(2)
+        ",
+        )
+        .expect("Failed to evaluate");
+        assert_eq!(result, RuntimeVal::Int(4));
+    }
+
+    #[test]
+    fn func_call_string() {
+        let result = evaluate(
+            "
+        func test(param1) {
+            return param1 + 'world!';
+        }
+
+        test('hello, ')
+        ",
+        )
+        .expect("Failed to evaluate");
+        assert_eq!(result, RuntimeVal::String("hello, world!".to_string()));
     }
 }

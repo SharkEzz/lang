@@ -21,4 +21,5 @@ pub enum RuntimeError {
     DivisionByZero,
     UndefinedVariable(String),
     UndefinedFunction(String),
+    InvalidFuncCallParametersCount(String),
 }

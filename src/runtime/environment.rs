@@ -8,6 +8,7 @@ use super::values::{RuntimeError, RuntimeVal};
 
 pub type Env = Rc<RefCell<Environment>>;
 
+#[derive(Debug)]
 pub struct Environment {
     parent: Option<Env>,
     variables: HashMap<String, RuntimeVal>,
