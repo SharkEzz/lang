@@ -270,6 +270,7 @@ impl Interpreter {
             Atom::Integer(num) => Ok(RuntimeVal::Int(*num)),
             Atom::Float(num) => Ok(RuntimeVal::Float(*num)),
             Atom::String(string) => Ok(RuntimeVal::String(string.clone())),
+            Atom::Bool(val) => Ok(RuntimeVal::Bool(*val)),
         }
     }
 }

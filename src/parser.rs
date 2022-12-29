@@ -135,6 +135,7 @@ impl Parser {
             TokenType::IntType => TokenType::Integer,
             TokenType::FloatType => TokenType::Float,
             TokenType::StringType => TokenType::String,
+            TokenType::BoolType => TokenType::Bool,
             _ => panic!("Invalid variable type"),
         };
 
@@ -225,6 +226,7 @@ impl Parser {
                     .expect("Parser error: expected float"),
             )),
             TokenType::String => Expr::Literal(Atom::String(self.eat(TokenType::String).value)),
+            TokenType::Bool => Expr::Literal(Atom::Bool(self.eat(TokenType::Bool).value == "true")),
             TokenType::OpenParen => {
                 self.eat(TokenType::OpenParen);
                 let expr = self.parse_expression();
